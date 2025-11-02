@@ -4,9 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SDJ Licensing System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
-
   :root {
     --bg:#0b0f1a;
     --card:#121a2a;
@@ -16,7 +15,11 @@
     --text-muted:#99a6bd;
     --glass: rgba(255,255,255,0.03);
     --shadow: rgba(0,0,0,0.5);
+    --success:#7ef29b;
+    --danger:#ff6b6b;
   }
+
+  * {box-sizing:border-box;}
 
   body {
     margin:0;
@@ -25,6 +28,7 @@
     color:var(--text);
   }
 
+  /* Header */
   header {
     display:flex;
     justify-content:space-between;
@@ -45,14 +49,13 @@
   }
 
   header h1 img {
-    height:36px;
+    height:40px;
+    border-radius:6px;
   }
 
-  header .lead {
-    font-size:13px;
-    color:var(--text-muted);
-  }
+  header .lead {font-size:13px;color:var(--text-muted);}
 
+  /* Container */
   .wrap {
     display:flex;
     justify-content:center;
@@ -61,6 +64,7 @@
     flex-wrap:wrap;
   }
 
+  /* Cards */
   .card {
     background:var(--card);
     border-radius:12px;
@@ -68,10 +72,12 @@
     box-shadow:0 6px 18px var(--shadow);
     flex:1 1 420px;
     max-width:480px;
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
   }
 
-  h2,h3,h4 {margin-top:0;margin-bottom:8px;}
+  .card:hover {transform:translateY(-4px); box-shadow:0 10px 24px var(--shadow);}
 
+  h2,h3,h4 {margin-top:0;margin-bottom:10px;}
   label {display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;}
   input,select,textarea,button {
     width:100%;
@@ -80,17 +86,17 @@
     border:none;
     background:var(--glass);
     color:var(--text);
-    box-sizing:border-box;
     margin-bottom:10px;
     font-size:14px;
+    transition:all 0.2s ease;
   }
+  input:focus {outline:none; background:rgba(255,255,255,0.06);}
 
   button.primary {
     background:linear-gradient(90deg,var(--accent),var(--accent-light));
     color:#0b0f1a;
     font-weight:600;
     cursor:pointer;
-    transition:all 0.2s ease;
   }
   button.primary:hover {filter:brightness(1.1);}
 
@@ -100,18 +106,43 @@
   .list {max-height:280px;overflow:auto;padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;}
   .item {display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid rgba(255,255,255,0.05);}
   .tag {font-size:12px;color:var(--text-muted);}
-  .success {color:#7ef29b;}
-  .danger {color:#ff6b6b;}
+  .success {color:var(--success);}
+  .danger {color:var(--danger);}
 
+  /* Footer */
   footer {text-align:center;color:var(--text-muted);font-size:12px;padding:20px;}
-  @media(max-width:980px){.wrap{flex-direction:column;align-items:center}}
+
+  /* Notifications */
+  .notification {
+    position:fixed;
+    top:20px;
+    right:20px;
+    padding:12px 18px;
+    border-radius:8px;
+    color:#0b0f1a;
+    font-weight:600;
+    z-index:9999;
+    opacity:0;
+    transform:translateY(-10px);
+    transition:all 0.3s ease;
+  }
+  .notification.show {opacity:1; transform:translateY(0);}
+  .notification.success {background:var(--success);}
+  .notification.danger {background:var(--danger);}
+
+  /* Responsive Admin Panel */
+  @media(max-width:980px){
+    .wrap{flex-direction:column;align-items:center;}
+    #admin_panel {display:none;}
+    #admin_panel.show {display:block;}
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1><img src="https://via.placeholder.com/36?text=SDJ" alt="SDJ Logo"> SDJ Licensing System</h1>
-  <div class="lead">Modern demo UI — browser simulation</div>
+  <h1><img src="https://via.placeholder.com/40?text=SDJ" alt="SDJ Logo"> SDJ Licensing System</h1>
+  <div class="lead">Professional frontend demo — browser simulation</div>
 </header>
 
 <div class="wrap">
@@ -129,8 +160,6 @@
       <button class="primary" onclick="verifyLicense()">Verify / Activate</button>
       <button onclick="demoCreateSample()">Sample License</button>
     </div>
-
-    <div id="verify_result"></div>
     <small class="tag">Tip: Admin panel manages licenses. Demo uses localStorage.</small>
   </section>
 
@@ -146,7 +175,7 @@
       <button onclick="adminLogin()">Login</button>
       <button onclick="logoutAdmin()">Logout</button>
     </div>
-    <div id="admin_msg"></div>
+    <div id="admin_msg" class="tag"></div>
 
     <div id="admin_panel" style="display:none;">
       <h4>Generate Licenses</h4>
@@ -175,35 +204,150 @@
 </div>
 
 <footer>
-  SDJ Licensing System — Modern Frontend Demo. Replace simulated functions with real backend API.
+  SDJ Licensing System — Modern Frontend Demo. Connect to a real backend API for production.
 </footer>
 
+<div id="notification" class="notification"></div>
+
 <script>
-  const STORAGE_KEY = "sdj_lic_demo_v2";
+  const STORAGE_KEY = "sdj_lic_demo_prod";
   const $ = id=>document.getElementById(id);
   let adminToken = null;
+
   function now(){return Date.now();}
   function uid(p='id'){return p+'_'+Math.random().toString(36).slice(2,10);}
   function loadStorage(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw){const base={licenses:[],activations:[],admin:{username:"admin",password:"admin"}};localStorage.setItem(STORAGE_KEY,JSON.stringify(base));return base;}try{return JSON.parse(raw);}catch(e){const base={licenses:[],activations:[],admin:{username:"admin",password:"admin"}};localStorage.setItem(STORAGE_KEY,JSON.stringify(base));return base;}}
   function saveStorage(obj){localStorage.setItem(STORAGE_KEY,JSON.stringify(obj));}
   function makeKey(prefix='',length=16){const c="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";let s=prefix?prefix+'-':'';for(let i=0;i<length;i++)s+=c.charAt(Math.floor(Math.random()*c.length));return s.slice(0,4)+'-'+s.slice(4,8)+'-'+s.slice(8,12)+'-'+s.slice(12);}
-  async function simulateVerifyLicense({license,username,gameId}){const st=loadStorage();const lic=st.licenses.find(l=>l.key===license);const nowt=now();if(!lic)return{valid:false,message:'License not found'};if(lic.revoked)return{valid:false,message:'License revoked'};if(lic.expiresAt&&lic.expiresAt<nowt)return{valid:false,message:'License expired'};if(lic.maxUses&&lic.uses>=lic.maxUses)return{valid:false,message:'License uses exceeded'};const act={id:uid('act'),licenseKey:license,username,gameId:gameId||'',ip:'0.0.0.0',time:nowt};st.activations.unshift(act);lic.uses=(lic.uses||0)+1;saveStorage(st);return{valid:true,message:'License verified',license:lic};}
+
+  async function simulateVerifyLicense({license,username,gameId}){
+    const st=loadStorage();
+    const lic=st.licenses.find(l=>l.key===license);
+    const nowt=now();
+    if(!lic)return {valid:false,message:'License not found'};
+    if(lic.revoked)return {valid:false,message:'License revoked'};
+    if(lic.expiresAt&&lic.expiresAt<nowt)return {valid:false,message:'License expired'};
+    if(lic.maxUses&&lic.uses>=lic.maxUses)return {valid:false,message:'License uses exceeded'};
+    const act={id:uid('act'),licenseKey:license,username,gameId:gameId||'',ip:'0.0.0.0',time:nowt};
+    st.activations.unshift(act);
+    lic.uses=(lic.uses||0)+1;
+    saveStorage(st);
+    return {valid:true,message:'License verified',license:lic};
+  }
+
   async function simulateGenerateLicenses({count=1,prefix='',maxUses=1,expiresInDays=0,owner=''}){
-    const st=loadStorage();const nowt=now();const exp=expiresInDays>0?nowt+expiresInDays*24*60*60*1000:0;const created=[];for(let i=0;i<count;i++){const key=makeKey(prefix,16);const lic={id:uid('lic'),key,owner,uses:0,maxUses:+maxUses,expiresAt:exp,revoked:0,createdAt:nowt};st.licenses.unshift(lic);created.push(lic);}saveStorage(st);return created;}
+    const st=loadStorage();
+    const nowt=now();
+    const exp=expiresInDays>0?nowt+expiresInDays*24*60*60*1000:0;
+    const created=[];
+    for(let i=0;i<count;i++){
+      const key=makeKey(prefix,16);
+      const lic={id:uid('lic'),key,owner,uses:0,maxUses:+maxUses,expiresAt:exp,revoked:0,createdAt:nowt};
+      st.licenses.unshift(lic);
+      created.push(lic);
+    }
+    saveStorage(st);
+    return created;
+  }
+
   async function simulateListLicenses(){return loadStorage().licenses;}
   async function simulateListActivations(){return loadStorage().activations;}
   async function simulateRevokeLicense(key){const st=loadStorage();const lic=st.licenses.find(l=>l.key===key);if(lic)lic.revoked=1;saveStorage(st);return !!lic;}
   async function simulateDeleteLicense(key){const st=loadStorage();const before=st.licenses.length;st.licenses=st.licenses.filter(l=>l.key!==key);saveStorage(st);return st.licenses.length<before;}
 
-  function adminLogin(){const u=$('admin_user').value.trim();const p=$('admin_pass').value;const st=loadStorage();if(u===st.admin.username&&p===st.admin.password){adminToken='demo';$('admin_msg').innerText='Logged in (demo)';$('admin_panel').style.display='block';refreshAdminViews();}else{$('admin_msg').innerText='Invalid credentials';}}
-  function logoutAdmin(){adminToken=null;$('admin_msg').innerText='Logged out';$('admin_panel').style.display='none';}
-  async function verifyLicense(){const license=$('lic_input').value.trim();const username=$('user_input').value.trim();const gameId=$('gameid_input').value.trim();if(!license||!username){showResult(false,'License and username required');return;}const resp=await simulateVerifyLicense({license,username,gameId});showResult(resp.valid,resp.message);}
-  function showResult(ok,message){const el=$('verify_result');el.innerHTML=ok?`<div class="success">✅ ${message}</div>`:`<div class="danger">❌ ${message}</div>`;}
-  async function demoCreateSample(){const created=await simulateGenerateLicenses({count:1,prefix:'DEMO',maxUses:3,expiresInDays:7});$('lic_input').value=created[0].key;$('user_input').value='DemoPlayer';showResult(true,'Sample license created');refreshAdminViews();}
-  async function generateLicenses(){if(!adminToken){alert('Login first');return;}const prefix=$('gen_prefix').value.trim();const count=Math.max(1,parseInt($('gen_count').value||1));const maxUses=Math.max(1,parseInt($('gen_uses').value||1));const days=Math.max(0,parseInt($('gen_days').value||0));await simulateGenerateLicenses({count,prefix,maxUses,expiresInDays:days,owner:''});refreshAdminViews();}
-  async function refreshAdminViews(){if(!adminToken)return;const licList=await simulateListLicenses();const actList=await simulateListActivations();const licEl=$('licenses_list');licEl.innerHTML='';licList.forEach(l=>{const d=document.createElement('div');d.className='item';const left=document.createElement('div');left.innerHTML=`<div><strong>${l.key}</strong></div><div class="tag">uses ${l.uses}/${l.maxUses} — ${l.revoked?'<span class="danger">revoked</span>':'<span class="success">active</span>'}</div>`;const right=document.createElement('div');right.style.minWidth='120px';const btnR=document.createElement('button');btnR.innerText='Revoke';btnR.onclick=async()=>{await simulateRevokeLicense(l.key);refreshAdminViews();};const btnD=document.createElement('button');btnD.innerText='Delete';btnD.onclick=async()=>{if(confirm('Delete?')){await simulateDeleteLicense(l.key);refreshAdminViews();}};right.appendChild(btnR);right.appendChild(btnD);d.appendChild(left);d.appendChild(right);licEl.appendChild(d);});const actEl=$('activations_list');actEl.innerHTML='';actList.forEach(a=>{const d=document.createElement('div');d.className='item';d.innerHTML=`<div><strong>${a.username}</strong> — <span class="tag">${a.licenseKey}</span></div><div class="tag">${new Date(a.time).toLocaleString()}</div>`;actEl.appendChild(d);});}
-  function exportData(){const data=localStorage.getItem(STORAGE_KEY);const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='sdj_license_demo.json';document.body.appendChild(a);a.click();a.remove();}
-  function resetDemo(){if(!confirm('Reset demo data?'))return;localStorage.removeItem(STORAGE_KEY);$('lic_input').value='';$('user_input').value='';$('gameid_input').value='';$('admin_msg').innerText='Demo reset';$('licenses_list').innerHTML='';$('activations_list').innerHTML='';}
+  function showNotification(message,type='success'){
+    const n=$('notification');
+    n.innerText=message;
+    n.className='notification show '+type;
+    setTimeout(()=>{n.className='notification';},3000);
+  }
+
+  function adminLogin(){
+    const u=$('admin_user').value.trim();
+    const p=$('admin_pass').value;
+    const st=loadStorage();
+    if(u===st.admin.username&&p===st.admin.password){
+      adminToken='prod';
+      $('admin_panel').style.display='block';
+      $('admin_msg').innerText='Logged in';
+      refreshAdminViews();
+    } else {
+      showNotification('Invalid credentials', 'danger');
+    }
+  }
+
+  function logoutAdmin(){adminToken=null;$('admin_panel').style.display='none';$('admin_msg').innerText='Logged out';}
+
+  async function verifyLicense(){
+    const license=$('lic_input').value.trim();
+    const username=$('user_input').value.trim();
+    const gameId=$('gameid_input').value.trim();
+    if(!license||!username){showNotification('License and username required','danger');return;}
+    const resp=await simulateVerifyLicense({license,username,gameId});
+    showNotification(resp.message, resp.valid?'success':'danger');
+    refreshAdminViews();
+  }
+
+  async function demoCreateSample(){
+    const created=await simulateGenerateLicenses({count:1,prefix:'DEMO',maxUses:3,expiresInDays:7});
+    $('lic_input').value=created[0].key;
+    $('user_input').value='DemoPlayer';
+    showNotification('Sample license created','success');
+    refreshAdminViews();
+  }
+
+  async function generateLicenses(){
+    if(!adminToken){showNotification('Login first','danger'); return;}
+    const prefix=$('gen_prefix').value.trim();
+    const count=Math.max(1,parseInt($('gen_count').value||1));
+    const maxUses=Math.max(1,parseInt($('gen_uses').value||1));
+    const days=Math.max(0,parseInt($('gen_days').value||0));
+    await simulateGenerateLicenses({count,prefix,maxUses,expiresInDays:days,owner:''});
+    showNotification(`Generated ${count} license(s)`,'success');
+    refreshAdminViews();
+  }
+
+  async function refreshAdminViews(){
+    if(!adminToken) return;
+    const licList=await simulateListLicenses();
+    const actList=await simulateListActivations();
+    const licEl=$('licenses_list'); licEl.innerHTML='';
+    licList.forEach(l=>{
+      const d=document.createElement('div'); d.className='item';
+      const left=document.createElement('div');
+      left.innerHTML=`<div><strong>${l.key}</strong></div><div class="tag">uses ${l.uses}/${l.maxUses} — ${l.revoked?'<span class="danger">revoked</span>':'<span class="success">active</span>'}</div>`;
+      const right=document.createElement('div'); right.style.minWidth='120px';
+      const btnR=document.createElement('button'); btnR.innerText='Revoke'; btnR.onclick=async()=>{await simulateRevokeLicense(l.key);refreshAdminViews(); showNotification('License revoked','danger');};
+      const btnD=document.createElement('button'); btnD.innerText='Delete'; btnD.onclick=async()=>{if(confirm('Delete?')){await simulateDeleteLicense(l.key);refreshAdminViews(); showNotification('License deleted','danger');}};
+      right.appendChild(btnR); right.appendChild(btnD);
+      d.appendChild(left); d.appendChild(right);
+      licEl.appendChild(d);
+    });
+
+    const actEl=$('activations_list'); actEl.innerHTML='';
+    actList.forEach(a=>{
+      const d=document.createElement('div'); d.className='item';
+      d.innerHTML=`<div><strong>${a.username}</strong> — <span class="tag">${a.licenseKey}</span></div><div class="tag">${new Date(a.time).toLocaleString()}</div>`;
+      actEl.appendChild(d);
+    });
+  }
+
+  function exportData(){
+    const data=localStorage.getItem(STORAGE_KEY);
+    const blob=new Blob([data],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='sdj_license_demo.json'; document.body.appendChild(a); a.click(); a.remove();
+    showNotification('Data exported','success');
+  }
+
+  function resetDemo(){
+    if(!confirm('Reset demo data?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    $('lic_input').value=''; $('user_input').value=''; $('gameid_input').value='';
+    $('admin_msg').innerText='Demo reset';
+    $('licenses_list').innerHTML=''; $('activations_list').innerHTML='';
+    showNotification('Demo data reset','danger');
+  }
 
   (function init(){const st=loadStorage();if(st.admin){$('admin_user').value=st.admin.username;$('admin_pass').value=st.admin.password;}})();
 </script>
